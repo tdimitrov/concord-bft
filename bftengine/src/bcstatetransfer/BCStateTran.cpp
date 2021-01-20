@@ -2329,6 +2329,10 @@ void BCStateTran::checkFirstAndLastCheckpoint(uint64_t firstStoredCheckpoint, ui
 
 void BCStateTran::checkReachableBlocks(uint64_t lastReachableBlockNum) {
   if (lastReachableBlockNum > 0) {
+    // Progress logging - we want to show progress for slow operations. To avoid flooding the log progress bar style
+    // messages will be added to the log. The step is 10%.
+    uint32_t logStep = lastReachableBlockNum * 0.1;
+    LOG_INFO(getLogger(), "Verifying all reachable blocks. There are " << lastReachableBlockNum << " blocks to verify.");
     for (uint64_t currBlock = lastReachableBlockNum - 1; currBlock >= 1; currBlock--) {
       auto currDigest = getBlockAndComputeDigest(currBlock);
       ConcordAssert(!currDigest.isZero());
@@ -2336,6 +2340,9 @@ void BCStateTran::checkReachableBlocks(uint64_t lastReachableBlockNum) {
       prevFromNextBlockDigest.makeZero();
       as_->getPrevDigestFromBlock(currBlock + 1, reinterpret_cast<StateTransferDigest *>(&prevFromNextBlockDigest));
       ConcordAssertEQ(currDigest, prevFromNextBlockDigest);
+      if (currBlock % logStep == 0) {
+        LOG_INFO(getLogger(), "Verifying all reachable blocks. " << lastReachableBlockNum - currBlock << " of " << lastReachableBlockNum << " are verified.");
+      }
     }
   }
 }
@@ -2344,14 +2351,28 @@ void BCStateTran::checkUnreachableBlocks(uint64_t lastReachableBlockNum, uint64_
   ConcordAssertGE(lastBlockNum, lastReachableBlockNum);
   if (lastBlockNum > lastReachableBlockNum) {
     ConcordAssertEQ(getFetchingState(), FetchingState::GettingMissingBlocks);
+    LOG_INFO(getLogger(), "Checking fetched blocks for holes. There are " << lastBlockNum - 1 << " blocks to check.");
     uint64_t x = lastBlockNum - 1;
-    while (as_->hasBlock(x)) x--;
+    uint32_t logStep = x * 0.1;
+    while (as_->hasBlock(x)) {
+      x--;
+      if (x % logStep == 0) {
+        LOG_INFO(getLogger(), "Checking fetched blocks for holes. Checked " << lastBlockNum - x << " of " << lastBlockNum - 1);
+      }
+    }
 
     // we should have a hole
     ConcordAssertGT(x, lastReachableBlockNum);
 
     // we should have a single hole
-    for (uint64_t i = lastReachableBlockNum + 1; i <= x; i++) ConcordAssert(!as_->hasBlock(i));
+    LOG_INFO(getLogger(), "Checking unreachable blocks for holes. There are " << x - lastReachableBlockNum + 1 << " blocks to check.");
+    for (uint64_t i = lastReachableBlockNum + 1; i <= x; i++) {
+      ConcordAssert(!as_->hasBlock(i));
+      if (x % logStep == 0) {
+        LOG_INFO(getLogger(), "Checking unreachable blocks for holes. Checked " << i - (lastReachableBlockNum + 1) << " of " << x);
+      }
+    }
+      
   }
 }
 
@@ -2365,7 +2386,8 @@ void BCStateTran::checkBlocksBeingFetchedNow(bool checkAllBlocks,
 
     if (checkAllBlocks) {
       uint64_t lastRequiredBlock = psd_->getLastRequiredBlock();
-
+      LOG_INFO(getLogger(), "Checking blocks being fetched: " << (lastRequiredBlock + 1) - (lastBlockNum - 1) << " blocks to check." );
+      uint32_t logStep = ((lastRequiredBlock + 1) - (lastBlockNum - 1)) * 0.1;
       for (uint64_t currBlock = lastBlockNum - 1; currBlock >= lastRequiredBlock + 1; currBlock--) {
         auto currDigest = getBlockAndComputeDigest(currBlock);
         ConcordAssert(!currDigest.isZero());
@@ -2374,6 +2396,9 @@ void BCStateTran::checkBlocksBeingFetchedNow(bool checkAllBlocks,
         prevFromNextBlockDigest.makeZero();
         as_->getPrevDigestFromBlock(currBlock + 1, reinterpret_cast<StateTransferDigest *>(&prevFromNextBlockDigest));
         ConcordAssertEQ(currDigest, prevFromNextBlockDigest);
+        if (currBlock % logStep == 0) {
+          LOG_INFO(getLogger(), "Checking blocks being fetched: " << currBlock - (lastBlockNum - 1) << " of " << (lastRequiredBlock + 1) - (lastBlockNum - 1)) << " blocks to check.";
+        }
       }
     }
   }
@@ -2383,6 +2408,8 @@ void BCStateTran::checkStoredCheckpoints(uint64_t firstStoredCheckpoint, uint64_
   // check stored checkpoints
   if (lastStoredCheckpoint > 0) {
     uint64_t prevLastBlockNum = 0;
+    LOG_INFO(getLogger(), "Checking stored checkpoints. " << lastStoredCheckpoint - firstStoredCheckpoint << " checkpoints to check.");
+    uint32_t logStep = (lastStoredCheckpoint - firstStoredCheckpoint) * 0.1;
     for (uint64_t chkp = firstStoredCheckpoint; chkp <= lastStoredCheckpoint; chkp++) {
       if (!psd_->hasCheckpointDesc(chkp)) continue;
 
@@ -2429,6 +2456,10 @@ void BCStateTran::checkStoredCheckpoints(uint64_t firstStoredCheckpoint, uint64_
         }
         memset(buffer_, 0, config_.sizeOfReservedPage);
         psd_->free(allPagesDesc);
+      }
+
+      if (chkp % logStep == 0) {
+        LOG_INFO(getLogger(), "Checking stored checkpoints. Checked " << chkp - firstStoredCheckpoint << " from " << lastStoredCheckpoint - firstStoredCheckpoint);
       }
     }
   }
