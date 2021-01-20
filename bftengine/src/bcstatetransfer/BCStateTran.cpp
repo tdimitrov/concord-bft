@@ -2397,7 +2397,7 @@ void BCStateTran::checkBlocksBeingFetchedNow(bool checkAllBlocks,
         as_->getPrevDigestFromBlock(currBlock + 1, reinterpret_cast<StateTransferDigest *>(&prevFromNextBlockDigest));
         ConcordAssertEQ(currDigest, prevFromNextBlockDigest);
         if (currBlock % logStep == 0) {
-          LOG_INFO(getLogger(), "Checking blocks being fetched: " << currBlock - (lastBlockNum - 1) << " of " << (lastRequiredBlock + 1) - (lastBlockNum - 1)) << " blocks to check.";
+          LOG_INFO(getLogger(), "Checking blocks being fetched: " << currBlock - (lastBlockNum - 1) << " of " << (lastRequiredBlock + 1) - (lastBlockNum - 1) << " blocks to check.");
         }
       }
     }
