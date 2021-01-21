@@ -15,25 +15,29 @@
 #include "Logger.hpp"
 #include "assertUtils.hpp"
 
-
 namespace concord::util {
 
 class ProgressLogger {
   logging::Logger& logger_;
-  logging::LogLevel log_level_;
   std::string msg_;
   uint32_t log_step_;
   uint64_t final_val_;
 
-  public:
-  ProgressLogger(logging::Logger& logger, logging::LogLevel log_level, std::string_view msg, const uint64_t initial_val, const uint64_t final_val, const uint8_t step_percentage) : logger_{logger}, log_level_{log_level}, msg_{msg}, final_val_{final_val} {
+ public:
+  ProgressLogger(logging::Logger& logger,
+                 std::string_view msg,
+                 const uint64_t initial_val,
+                 const uint64_t final_val,
+                 const uint8_t step_percentage)
+      : logger_{logger}, msg_{msg}, final_val_{final_val} {
     ConcordAssertGT(step_percentage, 0);
     ConcordAssertLE(step_percentage, 100);
 
     log_step_ = (final_val - initial_val) / step_percentage / 100;
   }
 
-  ProgressLogger(logging::Logger& logger, std::string_view msg, const uint64_t initial_val, const uint64_t final_val) : ProgressLogger(logger, logging::LogLevel::info, msg, initial_val, final_val, 10) {}
+  ProgressLogger(logging::Logger& logger, std::string_view msg, const uint64_t initial_val, const uint64_t final_val)
+      : ProgressLogger(logger, msg, initial_val, final_val, 10) {}
 
   void logProgress(uint64_t current_val) {
     if (log_step_ == 0) {
@@ -42,9 +46,8 @@ class ProgressLogger {
     }
 
     if (current_val % log_step_ == 0) {
-      LOG_COMMON(logger_, log_level_, msg_ << current_val << " -> " << final_val_);
+      LOG_INFO(logger_, msg_ << current_val << " -> " << final_val_);
     }
   }
-
 };
-} // namespace logging
+}  // namespace concord::util

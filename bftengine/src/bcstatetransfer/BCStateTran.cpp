@@ -2330,7 +2330,8 @@ void BCStateTran::checkFirstAndLastCheckpoint(uint64_t firstStoredCheckpoint, ui
 
 void BCStateTran::checkReachableBlocks(uint64_t lastReachableBlockNum) {
   if (lastReachableBlockNum > 0) {
-    concord::util::ProgressLogger block_progress(getLogger(), "Verifying all reachable blocks. Progress: ", lastReachableBlockNum - 1, 1);
+    concord::util::ProgressLogger block_progress(
+        getLogger(), "Verifying all reachable blocks. Progress: ", lastReachableBlockNum - 1, 1);
     for (uint64_t currBlock = lastReachableBlockNum - 1; currBlock >= 1; currBlock--) {
       auto currDigest = getBlockAndComputeDigest(currBlock);
       ConcordAssert(!currDigest.isZero());
@@ -2347,7 +2348,8 @@ void BCStateTran::checkUnreachableBlocks(uint64_t lastReachableBlockNum, uint64_
   ConcordAssertGE(lastBlockNum, lastReachableBlockNum);
   if (lastBlockNum > lastReachableBlockNum) {
     ConcordAssertEQ(getFetchingState(), FetchingState::GettingMissingBlocks);
-    concord::util::ProgressLogger fetched_block_progress(getLogger(), "Checking fetched blocks for holes. Progress: ", lastBlockNum - 1, 1);
+    concord::util::ProgressLogger fetched_block_progress(
+        getLogger(), "Checking fetched blocks for holes. Progress: ", lastBlockNum - 1, 1);
     uint64_t x = lastBlockNum - 1;
     while (as_->hasBlock(x)) {
       x--;
@@ -2358,13 +2360,15 @@ void BCStateTran::checkUnreachableBlocks(uint64_t lastReachableBlockNum, uint64_
     ConcordAssertGT(x, lastReachableBlockNum);
 
     // we should have a single hole
-    LOG_INFO(getLogger(), "Checking unreachable blocks for holes. There are " << x - lastReachableBlockNum + 1 << " blocks to check.");
-    concord::util::ProgressLogger unreachable_block_progress(getLogger(), "Checking unreachable blocks for holes. Progress: ", lastReachableBlockNum + 1, x);
+    LOG_INFO(
+        getLogger(),
+        "Checking unreachable blocks for holes. There are " << x - lastReachableBlockNum + 1 << " blocks to check.");
+    concord::util::ProgressLogger unreachable_block_progress(
+        getLogger(), "Checking unreachable blocks for holes. Progress: ", lastReachableBlockNum + 1, x);
     for (uint64_t i = lastReachableBlockNum + 1; i <= x; i++) {
       ConcordAssert(!as_->hasBlock(i));
       unreachable_block_progress.logProgress(i);
     }
-      
   }
 }
 
@@ -2378,7 +2382,8 @@ void BCStateTran::checkBlocksBeingFetchedNow(bool checkAllBlocks,
 
     if (checkAllBlocks) {
       uint64_t lastRequiredBlock = psd_->getLastRequiredBlock();
-      concord::util::ProgressLogger last_req_block_progress(getLogger(), "Checking blocks being fetched. Progress: ", lastBlockNum - 1, lastRequiredBlock);
+      concord::util::ProgressLogger last_req_block_progress(
+          getLogger(), "Checking blocks being fetched. Progress: ", lastBlockNum - 1, lastRequiredBlock);
       for (uint64_t currBlock = lastBlockNum - 1; currBlock >= lastRequiredBlock + 1; currBlock--) {
         auto currDigest = getBlockAndComputeDigest(currBlock);
         ConcordAssert(!currDigest.isZero());
@@ -2397,7 +2402,8 @@ void BCStateTran::checkStoredCheckpoints(uint64_t firstStoredCheckpoint, uint64_
   // check stored checkpoints
   if (lastStoredCheckpoint > 0) {
     uint64_t prevLastBlockNum = 0;
-    concord::util::ProgressLogger stored_chkp_progress(getLogger(), "hecking stored checkpoints. Progress: ", firstStoredCheckpoint, lastStoredCheckpoint);
+    concord::util::ProgressLogger stored_chkp_progress(
+        getLogger(), "hecking stored checkpoints. Progress: ", firstStoredCheckpoint, lastStoredCheckpoint);
     for (uint64_t chkp = firstStoredCheckpoint; chkp <= lastStoredCheckpoint; chkp++) {
       if (!psd_->hasCheckpointDesc(chkp)) continue;
 
