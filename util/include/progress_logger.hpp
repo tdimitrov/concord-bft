@@ -35,6 +35,7 @@ class ProgressLogger {
 
     uint64_t range = final_val > initial_val ? (final_val - initial_val) : (initial_val - final_val); // take absolute value
     log_step_ = range / step_percentage / 100;
+    if (log_step_ == 0) log_step_ = 1;
   }
 
   ProgressLogger(logging::Logger& logger, std::string_view msg, const uint64_t initial_val, const uint64_t final_val)
