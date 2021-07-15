@@ -58,22 +58,25 @@ namespace impl {
 //#define RSA_STANDARD PKCS1v15
 //#define RSA_STANDARD OAEP<SHA>
 
-static RandomPool sGlobalRandGen;  // not thread-safe !!
+// Wrap RandomPool in a struct which initialises it. The wrapper is used as static thread local variable so that each
+// thread has got its own instance. The reason for this complication is thread safety. This RandomPool is used by the
+// SigManager which is a singleton used by many threads concurrently.
+struct RandomPoolWrapper : RandomPool {
+  RandomPoolWrapper() { CryptographyWrapper::init(); }
+};
 
-void CryptographyWrapper::init(const char* randomSeed) {
-  string s(randomSeed);
-  if (s.length() < 16) s.resize(16, ' ');
-  sGlobalRandGen.IncorporateEntropy((CryptoPP::byte*)s.c_str(), s.length());
+static thread_local RandomPoolWrapper sGlobalRandGen;
+
+void CryptographyWrapper::init() {
+  SecByteBlock seed(32);
+  // this might block for a while - man 4 random for details
+  OS_GenerateRandomBlock(false, seed, seed.size());
+  sGlobalRandGen.IncorporateEntropy(seed, seed.size());
 
   VERIFY(DigestUtil::digestLength() == DIGEST_SIZE);
 
   // Initialize RELIC library for BLS threshold signatures
   BLS::Relic::Library::Get();
-}
-
-void CryptographyWrapper::init() {
-  std::string seed = IntToString(time(NULL));
-  CryptographyWrapper::init(seed.c_str());
 }
 
 void convert(const Integer& in, string& out) {
@@ -194,8 +197,8 @@ bool ECDSAVerifier::verify(const std::string& data_to_verify, const std::string&
 ECDSAVerifier::~ECDSAVerifier() = default;
 class RSASigner::Impl {
  public:
-  Impl(BufferedTransformation& privateKey) : rand(sGlobalRandGen), priv(privateKey){};
-  Impl(RSA::PrivateKey& privateKey) : rand(sGlobalRandGen), priv(privateKey){};
+  Impl(BufferedTransformation& privateKey) : priv(privateKey){};
+  Impl(RSA::PrivateKey& privateKey) : priv(privateKey){};
 
   size_t signatureLength() const { return priv.SignatureLength(); }
 
@@ -206,15 +209,15 @@ class RSASigner::Impl {
             size_t& lengthOfReturnedData) const {
     const size_t sigLen = priv.SignatureLength();
     if (lengthOfOutBuffer < sigLen) return false;
+    // sGlobalRandGen is static thread_local so it's safe to use it here
     lengthOfReturnedData =
-        priv.SignMessage(rand, (CryptoPP::byte*)inBuffer, lengthOfInBuffer, (CryptoPP::byte*)outBuffer);
+        priv.SignMessage(sGlobalRandGen, (CryptoPP::byte*)inBuffer, lengthOfInBuffer, (CryptoPP::byte*)outBuffer);
     VERIFY(lengthOfReturnedData == sigLen);
 
     return true;
   }
 
  private:
-  RandomPool& rand;
   RSASS<PKCS1v15, SHA256>::Signer priv;
 };
 
