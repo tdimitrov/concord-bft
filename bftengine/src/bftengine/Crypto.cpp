@@ -58,18 +58,17 @@ namespace impl {
 //#define RSA_STANDARD PKCS1v15
 //#define RSA_STANDARD OAEP<SHA>
 
-// Wrap RandomPool in a struct which initialises it. The wrapper is used as static thread local variable so that each
-// thread has got its own instance. The reason for this complication is thread safety. This RandomPool is used by the
-// SigManager which is a singleton used by many threads concurrently.
 struct RandomPoolWrapper : RandomPool {
   RandomPoolWrapper() {
     SecByteBlock seed(32);
-    // this might block for a while - 'man 4 random' for details
     OS_GenerateRandomBlock(false, seed, seed.size());
     IncorporateEntropy(seed, seed.size());  // method of RandomPool
   }
 };
 
+// RandomPoolWrapper wraps RandomPool in a struct which initialises it. The wrapper is used as static thread local
+// variable so that each thread has got its own instance. The reason for this complication is thread safety. This
+// RandomPool is used by the SigManager which is a singleton used by many threads concurrently.
 static thread_local RandomPoolWrapper sGlobalRandGen;
 
 void convert(const Integer& in, string& out) {
