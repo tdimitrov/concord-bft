@@ -62,22 +62,15 @@ namespace impl {
 // thread has got its own instance. The reason for this complication is thread safety. This RandomPool is used by the
 // SigManager which is a singleton used by many threads concurrently.
 struct RandomPoolWrapper : RandomPool {
-  RandomPoolWrapper() { CryptographyWrapper::init(); }
+  RandomPoolWrapper() {
+    SecByteBlock seed(32);
+    // this might block for a while - 'man 4 random' for details
+    OS_GenerateRandomBlock(false, seed, seed.size());
+    IncorporateEntropy(seed, seed.size());  // method of RandomPool
+  }
 };
 
 static thread_local RandomPoolWrapper sGlobalRandGen;
-
-void CryptographyWrapper::init() {
-  SecByteBlock seed(32);
-  // this might block for a while - man 4 random for details
-  OS_GenerateRandomBlock(false, seed, seed.size());
-  sGlobalRandGen.IncorporateEntropy(seed, seed.size());
-
-  VERIFY(DigestUtil::digestLength() == DIGEST_SIZE);
-
-  // Initialize RELIC library for BLS threshold signatures
-  BLS::Relic::Library::Get();
-}
 
 void convert(const Integer& in, string& out) {
   out.clear();
